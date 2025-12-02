@@ -32,7 +32,7 @@ type UniCharCount = usize;
 // See: Apple Text Input Sources Reference, Unicode Utilities Reference
 #[link(name = "Carbon", kind = "framework")]
 extern "C" {
-    fn TISCopyCurrentKeyboardLayoutInputSource() -> CFTypeRef;
+    fn TISCopyCurrentASCIICapableKeyboardLayoutInputSource() -> CFTypeRef;
     fn TISGetInputSourceProperty(input_source: CFTypeRef, property_key: CFTypeRef) -> CFTypeRef;
     fn LMGetKbdType() -> u32;
     static kTISPropertyUnicodeKeyLayoutData: CFTypeRef;
@@ -67,7 +67,9 @@ fn build_char_to_keycode_map() -> HashMap<char, u16> {
     let mut map = HashMap::new();
 
     unsafe {
-        let input_source = TISCopyCurrentKeyboardLayoutInputSource();
+        // Use ASCII-capable layout to get the user's Latin keyboard (e.g., Dvorak)
+        // regardless of the currently active layout (e.g., Russian)
+        let input_source = TISCopyCurrentASCIICapableKeyboardLayoutInputSource();
         if input_source.is_null() {
             return map;
         }
