@@ -7,6 +7,8 @@ use core_graphics::event_source::{CGEventSource, CGEventSourceStateID};
 use std::thread;
 use std::time::Duration;
 
+use crate::keyboard_layout;
+
 /// Type text on macOS using clipboard paste approach
 /// This avoids character-by-character typing which can cause issues in some
 /// apps
@@ -51,11 +53,13 @@ pub fn type_text_macos(text: &str, _char_delay: u64) -> Result<(), String> {
         let source = CGEventSource::new(CGEventSourceStateID::CombinedSessionState)
             .map_err(|_| "Failed to create event source")?;
 
+        // Get layout-aware keycode for 'v' (works with Dvorak, Colemak, etc.)
+        let v_keycode = keyboard_layout::get_paste_keycode();
+
         // Simulate Cmd+V (paste)
-        // Key code 9 is 'V' key
-        let key_v_down = CGEvent::new_keyboard_event(source.clone(), 9, true)
+        let key_v_down = CGEvent::new_keyboard_event(source.clone(), v_keycode, true)
             .map_err(|_| "Failed to create key down event")?;
-        let key_v_up = CGEvent::new_keyboard_event(source.clone(), 9, false)
+        let key_v_up = CGEvent::new_keyboard_event(source.clone(), v_keycode, false)
             .map_err(|_| "Failed to create key up event")?;
 
         // Set the Command modifier flag
