@@ -80,7 +80,7 @@ fn build_char_to_keycode_map() -> HashMap<char, u16> {
             return map;
         }
 
-        // Wrap the CFData without retaining (it's owned by input_source)
+        // Wrap the CFData with retain (Get rule: we don't own it, so we retain for safe use)
         let layout_data: CFData = TCFType::wrap_under_get_rule(layout_data_ref.cast());
         // Cast byte pointer to UCKeyboardLayout pointer per Apple documentation
         let layout_ptr = layout_data.bytes().as_ptr().cast::<UCKeyboardLayout>();
