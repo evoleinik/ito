@@ -6,37 +6,52 @@
 use core_foundation::base::{CFRelease, TCFType};
 use core_foundation::data::CFData;
 use std::collections::HashMap;
+use std::ffi::c_void;
 use std::sync::OnceLock;
 
 /// Cached keycode map - built once on first access
 static KEYCODE_MAP: OnceLock<HashMap<char, u16>> = OnceLock::new();
 
+// Apple type aliases for FFI correctness per Apple documentation
+/// Opaque type for keyboard layout data structure (UCKeyboardLayout)
+#[repr(C)]
+struct UCKeyboardLayout {
+    _opaque: [u8; 0],
+}
+
+/// Apple's CFTypeRef - opaque reference to any Core Foundation object
+type CFTypeRef = *const c_void;
+
+/// Apple's OSStatus return type for Carbon APIs
+type OSStatus = i32;
+
+/// Apple's UniCharCount for Unicode string lengths
+type UniCharCount = usize;
+
 // FFI declarations for Carbon/CoreServices APIs
+// See: Apple Text Input Sources Reference, Unicode Utilities Reference
 #[link(name = "Carbon", kind = "framework")]
 extern "C" {
-    fn TISCopyCurrentKeyboardLayoutInputSource() -> *mut std::ffi::c_void;
-    fn TISGetInputSourceProperty(
-        input_source: *const std::ffi::c_void,
-        property_key: *const std::ffi::c_void,
-    ) -> *const std::ffi::c_void;
+    fn TISCopyCurrentKeyboardLayoutInputSource() -> CFTypeRef;
+    fn TISGetInputSourceProperty(input_source: CFTypeRef, property_key: CFTypeRef) -> CFTypeRef;
     fn LMGetKbdType() -> u32;
-    static kTISPropertyUnicodeKeyLayoutData: *const std::ffi::c_void;
+    static kTISPropertyUnicodeKeyLayoutData: CFTypeRef;
 }
 
 #[link(name = "CoreServices", kind = "framework")]
 extern "C" {
     fn UCKeyTranslate(
-        key_layout_ptr: *const u8,
+        key_layout_ptr: *const UCKeyboardLayout,
         virtual_key_code: u16,
         key_action: u16,
         modifier_key_state: u32,
         keyboard_type: u32,
         key_translate_options: u32,
         dead_key_state: *mut u32,
-        max_string_length: usize,
-        actual_string_length: *mut usize,
+        max_string_length: UniCharCount,
+        actual_string_length: *mut UniCharCount,
         unicode_string: *mut u16,
-    ) -> i32;
+    ) -> OSStatus;
 }
 
 const KUC_KEY_ACTION_DISPLAY: u16 = 3;
@@ -60,13 +75,14 @@ fn build_char_to_keycode_map() -> HashMap<char, u16> {
             TISGetInputSourceProperty(input_source, kTISPropertyUnicodeKeyLayoutData);
 
         if layout_data_ref.is_null() {
-            CFRelease(input_source);
+            CFRelease(input_source.cast_mut());
             return map;
         }
 
         // Wrap the CFData without retaining (it's owned by input_source)
-        let layout_data: CFData = TCFType::wrap_under_get_rule(layout_data_ref as *const _);
-        let layout_ptr = layout_data.bytes().as_ptr();
+        let layout_data: CFData = TCFType::wrap_under_get_rule(layout_data_ref.cast());
+        // Cast byte pointer to UCKeyboardLayout pointer per Apple documentation
+        let layout_ptr = layout_data.bytes().as_ptr().cast::<UCKeyboardLayout>();
         let kbd_type = LMGetKbdType();
 
         // Iterate through keycodes 0-127 to build reverse lookup
@@ -96,7 +112,7 @@ fn build_char_to_keycode_map() -> HashMap<char, u16> {
             }
         }
 
-        CFRelease(input_source);
+        CFRelease(input_source.cast_mut());
     }
 
     map
