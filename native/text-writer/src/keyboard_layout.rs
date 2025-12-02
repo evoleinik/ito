@@ -55,7 +55,8 @@ extern "C" {
 }
 
 const KUC_KEY_ACTION_DISPLAY: u16 = 3;
-const KUC_KEY_TRANSLATE_NO_DEAD_KEYS_BIT: u32 = 0;
+/// No translation options - pass 0 for default behavior
+const KUC_KEY_TRANSLATE_NO_OPTIONS: u32 = 0;
 
 /// Default QWERTY keycode for 'V' key
 const QWERTY_V_KEYCODE: u16 = 9;
@@ -97,7 +98,7 @@ fn build_char_to_keycode_map() -> HashMap<char, u16> {
                 KUC_KEY_ACTION_DISPLAY,
                 0, // no modifiers
                 kbd_type,
-                KUC_KEY_TRANSLATE_NO_DEAD_KEYS_BIT,
+                KUC_KEY_TRANSLATE_NO_OPTIONS,
                 &mut dead_key_state,
                 char_buf.len(),
                 &mut actual_len,
