@@ -6,6 +6,10 @@
 use core_foundation::base::{CFRelease, TCFType};
 use core_foundation::data::CFData;
 use std::collections::HashMap;
+use std::sync::OnceLock;
+
+/// Cached keycode map - built once on first access
+static KEYCODE_MAP: OnceLock<HashMap<char, u16>> = OnceLock::new();
 
 // FFI declarations for Carbon/CoreServices APIs
 #[link(name = "Carbon", kind = "framework")]
@@ -101,7 +105,7 @@ fn build_char_to_keycode_map() -> HashMap<char, u16> {
 /// Get the keycode for a character in the current keyboard layout.
 /// Returns None if the character cannot be found.
 pub fn keycode_for_char(ch: char) -> Option<u16> {
-    let map = build_char_to_keycode_map();
+    let map = KEYCODE_MAP.get_or_init(build_char_to_keycode_map);
     map.get(&ch.to_ascii_lowercase()).copied()
 }
 
