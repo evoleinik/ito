@@ -76,7 +76,7 @@ fn build_char_to_keycode_map() -> HashMap<char, u16> {
             TISGetInputSourceProperty(input_source, kTISPropertyUnicodeKeyLayoutData);
 
         if layout_data_ref.is_null() {
-            CFRelease(input_source.cast_mut());
+            CFRelease(input_source);
             return map;
         }
 
@@ -113,7 +113,7 @@ fn build_char_to_keycode_map() -> HashMap<char, u16> {
             }
         }
 
-        CFRelease(input_source.cast_mut());
+        CFRelease(input_source);
     }
 
     map
