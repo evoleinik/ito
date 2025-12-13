@@ -128,3 +128,16 @@ Native tests and builds are integrated into the existing CI workflows:
 - gRPC with Protocol Buffers
 - React (for UI components)
 - Various LLM providers (Groq, etc.)
+
+## Self-Hosting Notes
+
+- Set `VITE_GRPC_BASE_URL` at build time to point to remote server (e.g., `http://box:3001`)
+- DMG build with `--universal` flag causes "pattern is too long" error; use `--arm64` only
+- Build command: `VITE_GRPC_BASE_URL=http://box:3001 VITE_ITO_ENV=dev CSC_IDENTITY_AUTO_DISCOVERY=false bun run electron-vite build && bunx electron-builder --mac dmg --arm64`
+- After install, re-sign: `xattr -cr /Applications/Ito.app && codesign --force --deep --sign - /Applications/Ito.app`
+- Server runs on box via docker-compose; uses port 3001 (3000 often in use)
+- Docker services have `restart: always` - survives reboots
+- Health check is in `lib/window/ipcEvents.ts:606` - uses `VITE_GRPC_BASE_URL` when set
+- `VITE_ITO_ENV` must be set at build time (not just `ITO_ENV`) or app crashes on launch
+- GitHub Actions `workflow_dispatch` workflows must be on the default branch to appear in Actions UI
+- Fork remote: `git remote add fork git@github.com:evoleinik/ito.git`
