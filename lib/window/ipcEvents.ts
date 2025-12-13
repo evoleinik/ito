@@ -605,12 +605,12 @@ export function registerIPC() {
   // Server health check
   handleIPC('check-server-health', async () => {
     try {
-      const response = await fetch(
-        `http://localhost:${import.meta.env.VITE_LOCAL_SERVER_PORT}`,
-        {
-          method: 'GET',
-        },
-      )
+      const serverUrl =
+        import.meta.env.VITE_GRPC_BASE_URL ||
+        `http://localhost:${import.meta.env.VITE_LOCAL_SERVER_PORT || '3000'}`
+      const response = await fetch(serverUrl, {
+        method: 'GET',
+      })
 
       if (response.ok) {
         const text = await response.text()
@@ -634,7 +634,7 @@ export function registerIPC() {
           ? 'Connection timed out'
           : error.message?.includes('ECONNREFUSED') ||
               error.message?.includes('fetch')
-            ? 'Local server not running'
+            ? 'Server not reachable'
             : error.message || 'Unknown error occurred'
 
       return {
