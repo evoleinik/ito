@@ -249,6 +249,93 @@ bun run lint:fix           # Fix linting issues
 
 ---
 
+## 🏠 Self-Hosting
+
+This fork includes support for self-hosting Ito with a remote server. Instead of using the managed cloud service, you can run your own server and connect to it from anywhere.
+
+### Server Setup
+
+1. **Clone and configure the server**:
+   ```bash
+   git clone https://github.com/evoleinik/ito.git
+   cd ito/server
+   cp .env.example .env
+   ```
+
+2. **Edit `.env`** with your settings:
+   ```bash
+   PORT=3001                    # Use 3001 if 3000 is in use
+   DB_HOST=db
+   DB_USER=ito
+   DB_PASS=your-secure-password
+   GROQ_API_KEY=your-groq-api-key  # Get from console.groq.com
+   S3_ENDPOINT=http://minio:9000
+   REQUIRE_AUTH=false           # For personal use
+   ```
+
+3. **Start the server** (requires Docker):
+   ```bash
+   docker compose up -d --build
+   ```
+
+4. **Run database migrations**:
+   ```bash
+   docker exec -it ito-server node ./node_modules/node-pg-migrate/bin/node-pg-migrate.js up
+   ```
+
+5. **Verify the server is running**:
+   ```bash
+   curl http://localhost:3001
+   # Should return: "Welcome to the Ito Connect RPC server!"
+   ```
+
+### Building the Client
+
+Build the Electron app with your server URL baked in:
+
+```bash
+# Build with remote server URL (replace with your server address)
+VITE_GRPC_BASE_URL=http://your-server:3001 \
+VITE_ITO_ENV=dev \
+CSC_IDENTITY_AUTO_DISCOVERY=false \
+bun run electron-vite build
+
+# Create DMG (macOS, arm64 only to avoid electron-builder issues)
+bunx electron-builder --config electron-builder.config.js --mac dmg --arm64 --publish=never
+```
+
+### Installing the Client
+
+1. Mount the DMG from `dist/Ito-Installer.dmg`
+2. Drag `Ito.app` to Applications
+3. **Re-sign the app** (required for ad-hoc signed builds):
+   ```bash
+   xattr -cr /Applications/Ito.app
+   codesign --force --deep --sign - /Applications/Ito.app
+   ```
+4. Launch the app
+
+### Network Setup
+
+For remote access, you can use:
+- **Tailscale**: Recommended for secure, zero-config networking. Install on both client and server machines, then use the Tailscale hostname (e.g., `http://box:3001`)
+- **VPN**: Any VPN that gives you direct network access to your server
+- **Port forwarding**: Expose port 3001 (not recommended for security reasons)
+
+### Server Auto-Start
+
+The Docker services are configured with `restart: always`, so they'll automatically start on boot. Ensure Docker is enabled:
+
+```bash
+# Linux
+sudo systemctl enable docker
+
+# Verify services are running
+docker compose ps
+```
+
+---
+
 ## 🏗️ Architecture
 
 ### Client Architecture
