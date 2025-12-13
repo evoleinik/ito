@@ -1,0 +1,138 @@
+name: Build Self-Hosted
+
+on:
+  workflow_dispatch:
+    inputs:
+      server_url:
+        description: 'Your server URL (e.g., http://myserver:3001)'
+        required: true
+        type: string
+      build_mac_arm64:
+        description: 'Build for macOS (Apple Silicon)'
+        default: true
+        type: boolean
+      build_mac_x64:
+        description: 'Build for macOS (Intel)'
+        default: false
+        type: boolean
+
+permissions:
+  contents: read
+
+jobs:
+  build-mac-arm64:
+    if: ${{ inputs.build_mac_arm64 }}
+    runs-on: macos-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Bun
+        uses: oven-sh/setup-bun@v1
+
+      - name: Install dependencies
+        run: bun install
+
+      - name: Set up Rust
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          toolchain: stable
+          targets: 'aarch64-apple-darwin'
+
+      - name: Build native Rust modules (arm64)
+        run: |
+          for module in global-key-listener audio-recorder text-writer active-application selected-text-reader; do
+            echo "Building $module for arm64..."
+            cd native/$module
+            cargo build --release --target aarch64-apple-darwin
+            cd ../..
+          done
+
+      - name: Set up environment for self-hosted
+        run: |
+          echo "VITE_GRPC_BASE_URL=\"${{ inputs.server_url }}\"" >> .env
+          echo "VITE_ITO_ENV=\"dev\"" >> .env
+          echo "ITO_ENV=\"dev\"" >> .env
+          echo "CSC_IDENTITY_AUTO_DISCOVERY=false" >> .env
+          cat .env
+
+      - name: Build Electron app
+        run: bun run electron-vite build
+
+      - name: Package macOS DMG (arm64)
+        env:
+          CSC_IDENTITY_AUTO_DISCOVERY: false
+        run: |
+          bunx electron-builder --config electron-builder.config.js --mac dmg --arm64 --publish=never
+
+      - name: Rename artifact with server info
+        run: |
+          # Extract hostname from URL for naming
+          SERVER_HOST=$(echo "${{ inputs.server_url }}" | sed 's|.*://||' | sed 's|:.*||' | sed 's|/.*||')
+          mv dist/Ito-Installer.dmg "dist/Ito-selfhosted-${SERVER_HOST}-arm64.dmg" || true
+          ls -la dist/*.dmg
+
+      - name: Upload macOS DMG (arm64)
+        uses: actions/upload-artifact@v4
+        with:
+          name: Ito-macOS-arm64
+          path: dist/*.dmg
+
+  build-mac-x64:
+    if: ${{ inputs.build_mac_x64 }}
+    runs-on: macos-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Bun
+        uses: oven-sh/setup-bun@v1
+
+      - name: Install dependencies
+        run: bun install
+
+      - name: Set up Rust
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          toolchain: stable
+          targets: 'x86_64-apple-darwin'
+
+      - name: Build native Rust modules (x64)
+        run: |
+          for module in global-key-listener audio-recorder text-writer active-application selected-text-reader; do
+            echo "Building $module for x64..."
+            cd native/$module
+            cargo build --release --target x86_64-apple-darwin
+            cd ../..
+          done
+
+      - name: Set up environment for self-hosted
+        run: |
+          echo "VITE_GRPC_BASE_URL=\"${{ inputs.server_url }}\"" >> .env
+          echo "VITE_ITO_ENV=\"dev\"" >> .env
+          echo "ITO_ENV=\"dev\"" >> .env
+          echo "CSC_IDENTITY_AUTO_DISCOVERY=false" >> .env
+          cat .env
+
+      - name: Build Electron app
+        run: bun run electron-vite build
+
+      - name: Package macOS DMG (x64)
+        env:
+          CSC_IDENTITY_AUTO_DISCOVERY: false
+        run: |
+          bunx electron-builder --config electron-builder.config.js --mac dmg --x64 --publish=never
+
+      - name: Rename artifact with server info
+        run: |
+          SERVER_HOST=$(echo "${{ inputs.server_url }}" | sed 's|.*://||' | sed 's|:.*||' | sed 's|/.*||')
+          mv dist/Ito-Installer.dmg "dist/Ito-selfhosted-${SERVER_HOST}-x64.dmg" || true
+          ls -la dist/*.dmg
+
+      - name: Upload macOS DMG (x64)
+        uses: actions/upload-artifact@v4
+        with:
+          name: Ito-macOS-x64
+          path: dist/*.dmg

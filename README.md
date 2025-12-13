@@ -289,9 +289,21 @@ This fork includes support for self-hosting Ito with a remote server. Instead of
    # Should return: "Welcome to the Ito Connect RPC server!"
    ```
 
-### Building the Client
+### Building the Client (GitHub Actions)
 
-Build the Electron app with your server URL baked in:
+The easiest way to build your own client is using GitHub Actions:
+
+1. **Fork this repository** to your GitHub account
+2. Go to **Actions** → **Build Self-Hosted**
+3. Click **Run workflow**
+4. Enter your server URL (e.g., `http://myserver:3001`)
+5. Select your platform (macOS arm64 or x64)
+6. Wait for the build to complete (~5-10 minutes)
+7. Download the DMG from **Artifacts**
+
+### Building the Client (Local)
+
+Alternatively, build locally with your server URL:
 
 ```bash
 # Build with remote server URL (replace with your server address)
